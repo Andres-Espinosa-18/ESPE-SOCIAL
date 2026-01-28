@@ -1,0 +1,5 @@
+{
+  "name": "ESPE Social Network",
+  "description": "A responsive web platform for the ESPE university social network, featuring forums, study groups, calendar, and news.",
+  "requestFramePermissions": []
+}
