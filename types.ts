@@ -13,6 +13,14 @@ export enum ViewState {
   NEWS_DETAIL = 'NEWS_DETAIL'
 }
 
+export interface User {
+  id: number;
+  name: string;
+  student_id: string;
+  email: string;
+  role: 'student' | 'admin';
+}
+
 export interface NewsItem {
   id: string;
   title: string;
@@ -23,16 +31,34 @@ export interface NewsItem {
   content: string;
 }
 
+export interface Announcement {
+  id: number;
+  type: 'ACADEMICO' | 'ADMIN' | 'EVENTOS';
+  title: string;
+  date: string;
+  content: string;
+}
+
 export interface ForumPost {
   id: string;
+  user_id: number;
   author: string;
-  timeAgo: string;
-  avatar: string;
+  timeAgo: string; // Calculated or from DB string
+  avatar: string; // Placeholder mostly
   content: string;
   image?: string;
   commentsCount: number;
   likesCount: number;
   sharesCount: number;
+}
+
+export interface Club {
+  id: number;
+  title: string;
+  description: string;
+  image: string;
+  icon_name: string;
+  color_class: string;
 }
 
 export interface StudyGroup {
@@ -44,16 +70,11 @@ export interface StudyGroup {
   members: number;
 }
 
-export interface CalendarEvent {
-  day: number;
-  title: string;
-  type: 'exam' | 'holiday' | 'generic';
-}
-
 export interface NotificationItem {
-  id: string;
-  type: 'group' | 'forum' | 'system';
+  id: number;
+  type: 'AVISOS' | 'FOROS' | 'EVENTOS' | 'SISTEMA';
   title: string;
-  timeAgo: string;
-  read: boolean;
+  time_ago: string;
+  is_read: boolean;
+  color_class?: string; // Helper for frontend
 }
