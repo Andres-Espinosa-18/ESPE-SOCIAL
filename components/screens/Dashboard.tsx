@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ViewState, NewsItem } from '../../types';
 
 interface DashboardProps {
@@ -6,38 +6,26 @@ interface DashboardProps {
   onSelectNews: (news: NewsItem) => void;
 }
 
-export const NEWS_DATA: NewsItem[] = [
-  {
-    id: '1',
-    title: 'Noticia General 1',
-    image: 'https://picsum.photos/400/300?random=1',
-    date: '10/12/2025',
-    author: 'Admin',
-    summary: 'Admisiones para periodo SII - 2026',
-    content: 'Praesent sed ligula in odio tempus gravida. Ut tempus vehicula augue, at semper sapien fermentum in. Sed at eros sit amet magna bibendum viverra eget in purus.'
-  },
-  {
-    id: '2',
-    title: 'Centro de estudios ESPE',
-    image: 'https://picsum.photos/400/300?random=2',
-    date: '09/12/2025',
-    author: 'Departamento IT',
-    summary: 'Nuevos laboratorios inaugurados',
-    content: 'Lorem ipsum dolor sit amet.'
-  },
-  {
-    id: '3',
-    title: 'Nuevas Noticias ESPE',
-    image: 'https://picsum.photos/400/300?random=3',
-    date: '08/12/2025',
-    author: 'Rectorado',
-    summary: 'Conferencia de tecnología mañana',
-    content: 'Lorem ipsum dolor sit amet.'
-  }
-];
-
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
   const [alertTab, setAlertTab] = useState<'ACADEMICO' | 'ADMIN' | 'EVENTOS'>('ACADEMICO');
+  const [newsData, setNewsData] = useState<NewsItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch News from Backend
+  useEffect(() => {
+    fetch('http://localhost:3000/api/news')
+      .then(res => res.json())
+      .then(data => {
+        // Map database fields if necessary or assume they match NewsItem interface
+        // The SQL uses string for date, so it maps directly
+        setNewsData(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch news:', err);
+        setLoading(false);
+      });
+  }, []);
 
   const alerts = {
     'ACADEMICO': {
@@ -144,28 +132,34 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
          </div>
       </div>
 
-      {/* News Feed */}
+      {/* News Feed from Database */}
       <div>
          <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold text-gray-800 text-lg">Noticias Destacadas</h3>
          </div>
-         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {NEWS_DATA.map(news => (
-               <div key={news.id} onClick={() => onSelectNews(news)} className="cursor-pointer group bg-white rounded-2xl p-3 hover:shadow-lg transition-all duration-300 border border-gray-100">
-                  <div className="rounded-xl overflow-hidden aspect-video mb-3 shadow-sm relative">
-                     <img src={news.image} alt={news.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                        <span className="text-white text-xs font-bold">Leer más</span>
-                     </div>
-                  </div>
-                  <div className="px-1">
-                     <span className="text-[10px] font-bold text-espe-green uppercase tracking-wider">{news.author}</span>
-                     <p className="text-sm font-bold text-gray-800 leading-tight mt-1 line-clamp-2">{news.summary}</p>
-                     <p className="text-xs text-gray-400 mt-2">{news.date}</p>
-                  </div>
-               </div>
-            ))}
-         </div>
+         {loading ? (
+           <div className="text-center py-10 text-gray-400">Cargando noticias de la base de datos...</div>
+         ) : (
+           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {newsData.length > 0 ? newsData.map(news => (
+                 <div key={news.id} onClick={() => onSelectNews(news)} className="cursor-pointer group bg-white rounded-2xl p-3 hover:shadow-lg transition-all duration-300 border border-gray-100">
+                    <div className="rounded-xl overflow-hidden aspect-video mb-3 shadow-sm relative">
+                       <img src={news.image} alt={news.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                          <span className="text-white text-xs font-bold">Leer más</span>
+                       </div>
+                    </div>
+                    <div className="px-1">
+                       <span className="text-[10px] font-bold text-espe-green uppercase tracking-wider">{news.author}</span>
+                       <p className="text-sm font-bold text-gray-800 leading-tight mt-1 line-clamp-2">{news.summary}</p>
+                       <p className="text-xs text-gray-400 mt-2">{news.date}</p>
+                    </div>
+                 </div>
+              )) : (
+                <div className="col-span-3 text-center text-gray-500">No hay noticias registradas.</div>
+              )}
+           </div>
+         )}
       </div>
     </div>
   );
