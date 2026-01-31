@@ -35,15 +35,16 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
 
         const data = await response.json();
 
-        if (data.success) {
+        if (response.ok && data.success) {
             // Guardar usuario en localStorage si deseas persistencia básica
             localStorage.setItem('user', JSON.stringify(data.user));
             onLogin();
         } else {
-            setError(data.message || 'Error al iniciar sesión');
+            setError(data.message || 'Error al iniciar sesión. Verifica credenciales.');
         }
     } catch (err) {
-        setError('Error de conexión con el servidor. Asegúrate que XAMPP y el Backend estén corriendo.');
+        console.error(err);
+        setError('No se pudo conectar con el servidor. Verifica que el backend esté corriendo y la base de datos conectada.');
     } finally {
         setLoading(false);
     }
@@ -73,13 +74,14 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
 
         const data = await response.json();
 
-        if (data.success) {
+        if (response.ok && data.success) {
             alert('Registro exitoso. Por favor inicia sesión.');
             setIsRegistering(false);
         } else {
-            setError('Error al registrarse. Verifique los datos.');
+            setError(data.message || 'Error al registrarse. Verifique los datos.');
         }
     } catch (err) {
+        console.error(err);
         setError('Error de conexión con el servidor.');
     } finally {
         setLoading(false);
@@ -102,8 +104,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
         </div>
 
         {error && (
-            <div className="bg-red-100 text-red-600 p-3 rounded-lg mb-4 text-sm font-bold">
-                {error}
+            <div className="bg-red-100 border border-red-200 text-red-700 p-4 rounded-lg mb-6 text-sm font-medium animate-fade-in text-left">
+                ⚠️ {error}
             </div>
         )}
 
@@ -138,9 +140,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
                     <button 
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-espe-lime text-espe-darkGreen font-bold py-3.5 rounded-xl shadow-md hover:brightness-105 transition-all mt-4 disabled:opacity-50"
+                        className="w-full bg-espe-lime text-espe-darkGreen font-bold py-3.5 rounded-xl shadow-md hover:brightness-105 transition-all mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loading ? 'CARGANDO...' : 'INGRESAR'}
+                        {loading ? 'CONECTANDO...' : 'INGRESAR'}
                     </button>
                 </form>
 
