@@ -9,8 +9,8 @@ app.use(express.json());
 // CONFIGURACIÓN DE LA CONEXIÓN A LA BASE DE DATOS
 const db = mysql.createConnection({
   host: 'localhost',
-  user: 'root',      
-  password: '',      
+  user: 'admin',      
+  password: 'admin',      
   database: 'espe_social'
 });
 
