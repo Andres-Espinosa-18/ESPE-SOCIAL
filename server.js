@@ -9,8 +9,8 @@ app.use(express.json());
 // CONFIGURACIÓN DE LA CONEXIÓN A LA BASE DE DATOS
 const db = mysql.createConnection({
   host: 'localhost',
-  user: 'admin',      
-  password: 'admin',      
+  user: 'root',      
+  password: '',      
   database: 'espe_social'
 });
 
@@ -188,6 +188,36 @@ app.post('/api/notifications', (req, res) => {
     const { user_id, type, title } = req.body;
     const sql = 'INSERT INTO notifications (user_id, type, title) VALUES (?, ?, ?)';
     db.query(sql, [user_id, type, title], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ success: true });
+    });
+});
+
+// --- CALENDARIO (AGENDA PERSONAL) ---
+app.get('/api/calendar', (req, res) => {
+    const user_id = req.query.user_id;
+    if (!user_id) return res.json([]);
+
+    const sql = 'SELECT * FROM user_events WHERE user_id = ? ORDER BY event_date ASC, event_time ASC';
+    db.query(sql, [user_id], (err, data) => {
+        if (err) return res.status(500).json(err);
+        
+        // Formatear la fecha para que sea string YYYY-MM-DD simple en el JSON
+        const formatted = data.map(ev => ({
+            ...ev,
+            event_date: new Date(ev.event_date).toISOString().split('T')[0] 
+        }));
+        res.json(formatted);
+    });
+});
+
+app.post('/api/calendar', (req, res) => {
+    const { user_id, title, event_date, event_time, location, type_label, color } = req.body;
+    
+    const sql = `INSERT INTO user_events (user_id, title, event_date, event_time, location, type_label, color) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    
+    db.query(sql, [user_id, title, event_date, event_time, location, type_label, color], (err, result) => {
         if (err) return res.status(500).json(err);
         res.json({ success: true });
     });
