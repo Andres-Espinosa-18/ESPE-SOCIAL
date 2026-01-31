@@ -80,20 +80,6 @@ CREATE TABLE IF NOT EXISTS notifications (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- Tabla de Eventos Personales (Agenda)
-CREATE TABLE IF NOT EXISTS user_events (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    title VARCHAR(150) NOT NULL,
-    event_date DATE NOT NULL,
-    event_time VARCHAR(50),
-    location VARCHAR(100),
-    type_label VARCHAR(50) DEFAULT 'Evento',
-    color VARCHAR(50) DEFAULT 'bg-blue-500',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
 -- DATOS SEMILLA (SEED DATA) --
 
 -- Insertar Admin

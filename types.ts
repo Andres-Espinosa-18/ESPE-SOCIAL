@@ -78,13 +78,3 @@ export interface NotificationItem {
   is_read: boolean;
   color_class?: string; // Helper for frontend
 }
-
-export interface UserEvent {
-    id: number;
-    title: string;
-    event_date: string; // YYYY-MM-DD
-    event_time: string;
-    location: string;
-    type_label: string;
-    color: string;
-}
