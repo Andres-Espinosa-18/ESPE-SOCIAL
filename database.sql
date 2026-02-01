@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS forum_posts (
     user_id INT NOT NULL,
     author_name VARCHAR(100),
     content TEXT NOT NULL,
-    image LONGTEXT, -- Changed to LONGTEXT to support Base64 images
+    image LONGTEXT, 
     shares_count INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS study_group_members (
     id INT AUTO_INCREMENT PRIMARY KEY,
     group_id INT NOT NULL,
     user_id INT NOT NULL,
-    status ENUM('pending', 'accepted') DEFAULT 'accepted', -- Simplificado a accepted por defecto para el creador
+    status ENUM('pending', 'accepted') DEFAULT 'accepted', 
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (group_id) REFERENCES study_groups(id),
     FOREIGN KEY (user_id) REFERENCES users(id),
@@ -120,9 +120,10 @@ CREATE TABLE IF NOT EXISTS study_group_members (
 -- Tabla de Notificaciones
 CREATE TABLE IF NOT EXISTS notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL, -- A quién le llega la notificación
+    user_id INT NOT NULL, 
     type ENUM('AVISOS', 'FOROS', 'EVENTOS', 'SISTEMA') NOT NULL,
     title VARCHAR(150) NOT NULL,
+    source_id INT, -- ID de referencia (post_id, group_id, etc.)
     time_ago VARCHAR(50) DEFAULT 'Ahora',
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -177,7 +178,7 @@ INSERT INTO clubs (title, description, image, icon_name, color_class) VALUES
 ('Club de Danza', 'Ritmos latinos, modernos y folclore nacional. Presentaciones semestrales.', 'https://picsum.photos/400/300?random=11', 'Music', 'bg-pink-100 text-pink-600'),
 ('Club de Robótica', 'Automatización, circuitos y competencia de seguidores de línea.', 'https://picsum.photos/400/300?random=12', 'Cpu', 'bg-purple-100 text-purple-600');
 
--- Insertar Eventos Globales (Por defecto para todos)
+-- Insertar Eventos Globales
 INSERT INTO user_events (user_id, title, event_date, event_time, location, type_label, color, is_global) VALUES
 (1, 'Inicio Parcial 1', CURDATE() + INTERVAL 2 DAY, '07:00', 'Campus', 'Académico', 'bg-espe-green', TRUE),
 (1, 'Feriado Nacional', CURDATE() + INTERVAL 5 DAY, '00:00', 'Nacional', 'Feriado', 'bg-red-500', TRUE),

@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { ViewState, NewsItem, Club, NotificationItem, User } from '../../types';
+import { ViewState, NewsItem, Club, NotificationItem, User, StudyGroup } from '../../types';
 import { ArrowLeft, Search, Bell, Calendar, MessageSquare, Info, Flag, Dumbbell, Code, Music, Cpu, CheckCircle, X, Send, Save, User as UserIcon, Mail, Phone, Book } from 'lucide-react';
 
+interface NotificationsProps {
+    onNavigate?: (view: ViewState) => void;
+    onSelectGroup?: (group: StudyGroup) => void;
+}
+
 /* --- NOTIFICATIONS --- */
-export const NotificationsScreen: React.FC = () => {
+export const NotificationsScreen: React.FC<NotificationsProps> = ({ onNavigate, onSelectGroup }) => {
    const [activeFilter, setActiveFilter] = useState<'ALL' | 'AVISOS' | 'EVENTOS' | 'FOROS'>('ALL');
    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
    const [loading, setLoading] = useState(true);
@@ -25,11 +30,36 @@ export const NotificationsScreen: React.FC = () => {
            .catch(err => setLoading(false));
    }, []);
 
-   const handleRead = async (id: number) => {
-        // Optimistic update
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-        
-        await fetch(`${API_URL}/notifications/${id}/read`, { method: 'PUT' });
+   const handleClickNotification = async (item: NotificationItem) => {
+        // 1. Mark as read
+        if (!item.is_read) {
+            setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, is_read: true } : n));
+            await fetch(`${API_URL}/notifications/${item.id}/read`, { method: 'PUT' });
+        }
+
+        if (!onNavigate) return;
+
+        // 2. Navigate based on type
+        if (item.type === 'FOROS') {
+            onNavigate(ViewState.FORUMS);
+        } else if (item.type === 'EVENTOS') {
+            onNavigate(ViewState.CALENDAR);
+        } else if (item.type === 'AVISOS' && item.source_id && onSelectGroup) {
+            // It's likely a Study Group Notification
+            try {
+                const res = await fetch(`${API_URL}/study_groups/${item.source_id}`);
+                if (res.ok) {
+                    const groupData = await res.json();
+                    onSelectGroup(groupData);
+                    onNavigate(ViewState.STUDY_GROUP_DETAIL);
+                } else {
+                   // Fallback if group deleted or not found
+                   onNavigate(ViewState.STUDY_GROUPS);
+                }
+            } catch (e) {
+                onNavigate(ViewState.STUDY_GROUPS);
+            }
+        }
    };
 
    const filteredNotifs = activeFilter === 'ALL' ? notifications : notifications.filter(n => n.type === activeFilter);
@@ -77,7 +107,7 @@ export const NotificationsScreen: React.FC = () => {
              filteredNotifs.length > 0 ? filteredNotifs.map((item) => (
                <div 
                   key={item.id} 
-                  onClick={() => handleRead(item.id)}
+                  onClick={() => handleClickNotification(item)}
                   className={`rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all border cursor-pointer
                      ${item.is_read ? 'bg-white border-gray-100 opacity-70' : 'bg-blue-50/50 border-blue-100'}
                   `}

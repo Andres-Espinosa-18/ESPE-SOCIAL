@@ -93,6 +93,7 @@ export interface NotificationItem {
   id: number;
   type: 'AVISOS' | 'FOROS' | 'EVENTOS' | 'SISTEMA';
   title: string;
+  source_id?: string;
   time_ago: string;
   is_read: boolean;
   color_class?: string; // Helper for frontend

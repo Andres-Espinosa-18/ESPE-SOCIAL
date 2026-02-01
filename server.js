@@ -44,9 +44,9 @@ function calculateTimeAgo(date) {
     return "Ahora";
 }
 
-function createNotification(userId, type, title) {
-    const sql = 'INSERT INTO notifications (user_id, type, title, is_read) VALUES (?, ?, ?, 0)';
-    db.query(sql, [userId, type, title], (err) => {
+function createNotification(userId, type, title, sourceId = null) {
+    const sql = 'INSERT INTO notifications (user_id, type, title, source_id, is_read) VALUES (?, ?, ?, ?, 0)';
+    db.query(sql, [userId, type, title, sourceId], (err) => {
         if (err) console.error('Error creando notificación:', err);
     });
 }
@@ -204,7 +204,7 @@ app.post('/api/forums/like', (req, res) => {
                 db.query('SELECT user_id, content FROM forum_posts WHERE id = ?', [post_id], (err3, posts) => {
                     if (!err3 && posts.length > 0 && posts[0].user_id !== user_id) {
                         const snippet = posts[0].content.substring(0, 20) + '...';
-                        createNotification(posts[0].user_id, 'FOROS', `A alguien le gustó tu post: "${snippet}"`);
+                        createNotification(posts[0].user_id, 'FOROS', `A alguien le gustó tu post: "${snippet}"`, post_id);
                     }
                 });
 
@@ -260,7 +260,7 @@ app.post('/api/forums/:id/comments', (req, res) => {
                 // Obtener nombre de quien comenta
                 db.query('SELECT name FROM users WHERE id = ?', [user_id], (err3, users) => {
                      const commenterName = users[0]?.name || 'Alguien';
-                     createNotification(posts[0].user_id, 'FOROS', `${commenterName} comentó en tu publicación.`);
+                     createNotification(posts[0].user_id, 'FOROS', `${commenterName} comentó en tu publicación.`, postId);
                 });
             }
         });
@@ -322,6 +322,33 @@ app.get('/api/study_groups/my', (req, res) => {
     });
 });
 
+app.get('/api/study_groups/:id', (req, res) => {
+    const groupId = req.params.id;
+    const sql = `
+        SELECT sg.*, u.name as createdBy_name,
+        (SELECT COUNT(*) FROM study_group_members WHERE group_id = sg.id) as membersCount
+        FROM study_groups sg
+        JOIN users u ON sg.created_by = u.id
+        WHERE sg.id = ?
+    `;
+    db.query(sql, [groupId], (err, data) => {
+        if (err) return res.status(500).json(err);
+        if (data.length === 0) return res.status(404).json({message: 'Grupo no encontrado'});
+        
+        const g = data[0];
+        const formatted = {
+            id: g.id.toString(),
+            title: g.title,
+            description: g.description,
+            date: g.meeting_date || 'Por definir',
+            createdBy: g.createdBy_name,
+            members: g.membersCount,
+            topic: g.topic
+        };
+        res.json(formatted);
+    });
+});
+
 app.post('/api/study_groups', (req, res) => {
     const { title, description, topic, meeting_date, user_id } = req.body;
     const sql = 'INSERT INTO study_groups (title, description, topic, meeting_date, created_by) VALUES (?, ?, ?, ?, ?)';
@@ -353,7 +380,7 @@ app.post('/api/study_groups/join', (req, res) => {
              if(!err2 && groups.length > 0 && groups[0].created_by !== user_id) {
                  db.query('SELECT name FROM users WHERE id = ?', [user_id], (err3, users) => {
                      const joinerName = users[0]?.name || 'Un estudiante';
-                     createNotification(groups[0].created_by, 'AVISOS', `${joinerName} se unió a tu grupo "${groups[0].title}".`);
+                     createNotification(groups[0].created_by, 'AVISOS', `${joinerName} se unió a tu grupo "${groups[0].title}".`, group_id);
                  });
              }
         });

@@ -61,7 +61,9 @@ const App: React.FC = () => {
       )}
       
       {view === ViewState.CLUBS && <ClubsScreen />}
-      {view === ViewState.NOTIFICATIONS && <NotificationsScreen />}
+      {view === ViewState.NOTIFICATIONS && (
+        <NotificationsScreen onNavigate={handleNavigate} onSelectGroup={handleSelectGroup} />
+      )}
       {view === ViewState.SUGGESTIONS && <SuggestionsScreen />}
       {view === ViewState.PROFILE && <ProfileScreen />}
       {view === ViewState.NEWS_DETAIL && selectedNews && (
