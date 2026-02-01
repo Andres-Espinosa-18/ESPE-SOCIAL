@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ViewState, NewsItem, User, Announcement } from '../../types';
+import { ViewState, NewsItem, User, Announcement, UserEvent } from '../../types';
 import { PlusCircle, X } from 'lucide-react';
 
 interface DashboardProps {
@@ -11,6 +11,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
   const [alertTab, setAlertTab] = useState<'ACADEMICO' | 'ADMIN' | 'EVENTOS'>('ACADEMICO');
   const [newsData, setNewsData] = useState<NewsItem[]>([]);
   const [currentAlert, setCurrentAlert] = useState<Announcement | null>(null);
+  const [calendarEvents, setCalendarEvents] = useState<UserEvent[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Admin Modal State
@@ -22,7 +23,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
   const user: User | null = userString ? JSON.parse(userString) : null;
   const isAdmin = user?.role === 'admin';
 
-  // Fetch News and Initial Announcement
+  // Fetch Data
   useEffect(() => {
     setLoading(true);
     // 1. Fetch News
@@ -33,6 +34,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
 
     // 2. Fetch Default Announcement (Academico)
     fetchAnnouncement('ACADEMICO');
+
+    // 3. Fetch Calendar Events for Mini Calendar
+    if (user) {
+        fetch(`http://localhost:3000/api/calendar?user_id=${user.id}`)
+            .then(res => res.json())
+            .then(data => setCalendarEvents(data))
+            .catch(err => console.error(err));
+    }
   }, []);
 
   const fetchAnnouncement = (type: string) => {
@@ -42,7 +51,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
             if (data && data.length > 0) {
                 setCurrentAlert(data[0]);
             } else {
-                // Fallback dummy if no db data
                 setCurrentAlert({
                     id: 0,
                     type: type as any,
@@ -63,6 +71,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
   const handlePublishAnnouncement = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!user) return;
+      if (!isAdmin) {
+          alert('No tienes permisos de administrador.');
+          return;
+      }
 
       try {
           const res = await fetch('http://localhost:3000/api/announcements', {
@@ -91,15 +103,47 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
       }
   };
 
-  const weekDays = [
-    { name: 'LUN', date: 22, active: false },
-    { name: 'MAR', date: 23, active: true, label: 'Calificaciones', color: 'border-espe-red', text: 'text-espe-red' },
-    { name: 'MIÉ', date: 24, active: true, label: 'Feriado', color: 'border-blue-500', text: 'text-blue-500' },
-    { name: 'JUE', date: 25, active: true, label: 'Navidad', color: 'border-green-500', text: 'text-green-500' },
-    { name: 'VIE', date: 26, active: false },
-    { name: 'SÁB', date: 27, active: false },
-    { name: 'DOM', date: 28, active: false },
-  ];
+  // --- Dynamic Week Logic ---
+  const getWeekDays = () => {
+    const curr = new Date();
+    const days = [];
+    // Start from Monday (1) to Sunday (7). Adjust logic so array is Mon-Sun
+    // getDay() returns 0 for Sunday.
+    const currentDay = curr.getDay() === 0 ? 7 : curr.getDay(); 
+    
+    // Set to Monday
+    curr.setDate(curr.getDate() - currentDay + 1);
+
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(curr);
+        days.push(d);
+        curr.setDate(curr.getDate() + 1);
+    }
+    return days;
+  };
+
+  const weekDays = getWeekDays().map(dateObj => {
+      const dateStr = dateObj.toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+      const dayName = new Intl.DateTimeFormat('es-ES', { weekday: 'short' }).format(dateObj).toUpperCase().replace('.', '');
+      const dayNum = dateObj.getDate();
+      
+      // Find events for this day
+      const dayEvents = calendarEvents.filter(e => e.event_date === dateStr);
+      const hasEvent = dayEvents.length > 0;
+      const firstEvent = hasEvent ? dayEvents[0] : null;
+
+      return {
+          name: dayName,
+          date: dayNum,
+          active: dateStr === todayStr,
+          hasEvent: hasEvent,
+          eventLabel: firstEvent?.type_label,
+          eventColor: firstEvent?.color.replace('bg-', 'border-').replace('text-', '') || 'border-gray-300',
+          eventText: firstEvent?.color.replace('bg-', 'text-') || 'text-gray-500',
+          dateObj: dateObj
+      };
+  });
 
   // Helper for colors based on current tab
   const getAlertColor = () => {
@@ -123,7 +167,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
          <span className="text-sm font-bold text-espe-green bg-green-50 px-3 py-1 rounded-full">SII - 2025</span>
       </div>
 
-      {/* Mini Calendar */}
+      {/* Mini Calendar (Dynamic) */}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-gray-800 text-lg">Esta Semana</h3>
@@ -131,14 +175,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
         </div>
         <div className="grid grid-cols-7 gap-2">
            {weekDays.map((day, idx) => (
-             <div key={idx} className={`relative flex flex-col items-center p-2 rounded-xl transition-all ${day.active ? 'bg-gray-50' : ''}`}>
-                <span className="text-[10px] font-bold text-gray-400 mb-1">{day.name}</span>
+             <div key={idx} className={`relative flex flex-col items-center p-2 rounded-xl transition-all ${day.active ? 'bg-gray-50 ring-1 ring-gray-200' : ''}`}>
+                <span className={`text-[10px] font-bold mb-1 ${day.active ? 'text-espe-green' : 'text-gray-400'}`}>{day.name}</span>
                 <span className={`text-xl font-bold ${day.active ? 'text-gray-800' : 'text-gray-400'}`}>{day.date}</span>
-                {day.label && (
-                  <div className={`mt-2 w-full text-center border-t-4 ${day.color} pt-1`}>
-                     <span className={`hidden md:block text-[9px] font-bold uppercase ${day.text}`}>{day.label}</span>
-                     <div className={`md:hidden mx-auto w-1.5 h-1.5 rounded-full ${day.color.replace('border-', 'bg-')}`}></div>
+                {day.hasEvent ? (
+                  <div className={`mt-2 w-full text-center border-t-4 ${day.eventColor} pt-1`}>
+                     <span className={`hidden md:block text-[9px] font-bold uppercase ${day.eventText} truncate px-1`}>{day.eventLabel}</span>
+                     <div className={`md:hidden mx-auto w-1.5 h-1.5 rounded-full ${day.eventColor.replace('border-', 'bg-')}`}></div>
                   </div>
+                ) : (
+                    <div className="mt-2 w-full h-4"></div> /* Spacer */
                 )}
              </div>
            ))}

@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- Tabla de Eventos Personales (Agenda)
+-- Tabla de Eventos Personales (Agenda) y Globales
 CREATE TABLE IF NOT EXISTS user_events (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS user_events (
     location VARCHAR(100),
     type_label VARCHAR(50) DEFAULT 'Evento',
     color VARCHAR(50) DEFAULT 'bg-blue-500',
+    is_global BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -115,3 +116,10 @@ INSERT INTO clubs (title, description, image, icon_name, color_class) VALUES
 ('Club de Software', 'Desarrollo web y móvil.', 'https://picsum.photos/400/300?random=10', 'Code', 'bg-blue-100 text-blue-600'),
 ('Club de Danza', 'Ritmos latinos y modernos.', 'https://picsum.photos/400/300?random=11', 'Music', 'bg-pink-100 text-pink-600'),
 ('Club de Robótica', 'Automatización y circuitos.', 'https://picsum.photos/400/300?random=12', 'Cpu', 'bg-purple-100 text-purple-600');
+
+-- Insertar Eventos Globales (Por defecto para todos)
+-- Nota: Usamos el ID 1 (Admin) como creador, pero is_global = TRUE
+INSERT INTO user_events (user_id, title, event_date, event_time, location, type_label, color, is_global) VALUES
+(1, 'Inicio Parcial 1', CURDATE() + INTERVAL 2 DAY, '07:00', 'Campus', 'Académico', 'bg-espe-green', TRUE),
+(1, 'Feriado Nacional', CURDATE() + INTERVAL 5 DAY, '00:00', 'Nacional', 'Feriado', 'bg-red-500', TRUE),
+(1, 'Semana de Exámenes', CURDATE() + INTERVAL 20 DAY, '07:00', 'Aulas', 'Examen', 'bg-orange-500', TRUE);

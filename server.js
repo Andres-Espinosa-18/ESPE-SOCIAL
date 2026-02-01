@@ -213,18 +213,20 @@ app.post('/api/notifications', (req, res) => {
     });
 });
 
-// --- CALENDARIO (AGENDA PERSONAL) ---
+// --- CALENDARIO (AGENDA PERSONAL Y GLOBAL) ---
 app.get('/api/calendar', (req, res) => {
     const user_id = req.query.user_id;
     if (!user_id) return res.json([]);
 
-    const sql = 'SELECT * FROM user_events WHERE user_id = ? ORDER BY event_date ASC, event_time ASC';
+    // Modificado para traer eventos del usuario O eventos globales
+    const sql = 'SELECT * FROM user_events WHERE user_id = ? OR is_global = 1 ORDER BY event_date ASC, event_time ASC';
     db.query(sql, [user_id], (err, data) => {
         if (err) return res.status(500).json(err);
         
         const formatted = data.map(ev => ({
             ...ev,
-            event_date: new Date(ev.event_date).toISOString().split('T')[0] 
+            event_date: new Date(ev.event_date).toISOString().split('T')[0],
+            is_global: !!ev.is_global
         }));
         res.json(formatted);
     });
@@ -233,8 +235,9 @@ app.get('/api/calendar', (req, res) => {
 app.post('/api/calendar', (req, res) => {
     const { user_id, title, event_date, event_time, location, type_label, color } = req.body;
     
-    const sql = `INSERT INTO user_events (user_id, title, event_date, event_time, location, type_label, color) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    // Por defecto is_global es FALSE (0)
+    const sql = `INSERT INTO user_events (user_id, title, event_date, event_time, location, type_label, color, is_global) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 0)`;
     
     db.query(sql, [user_id, title, event_date, event_time, location, type_label, color], (err, result) => {
         if (err) return res.status(500).json(err);

@@ -87,4 +87,5 @@ export interface UserEvent {
     location: string;
     type_label: string;
     color: string;
+    is_global?: boolean;
 }
