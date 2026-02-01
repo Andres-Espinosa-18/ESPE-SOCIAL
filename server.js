@@ -27,6 +27,30 @@ db.getConnection((err, connection) => {
   }
 });
 
+// --- HELPER: TIME AGO & NOTIFICATIONS ---
+
+function calculateTimeAgo(date) {
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + " años";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + " meses";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + " días";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + " h";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + " min";
+    return "Ahora";
+}
+
+function createNotification(userId, type, title) {
+    const sql = 'INSERT INTO notifications (user_id, type, title, is_read) VALUES (?, ?, ?, 0)';
+    db.query(sql, [userId, type, title], (err) => {
+        if (err) console.error('Error creando notificación:', err);
+    });
+}
+
 // --- AUTENTICACIÓN & PERFIL ---
 
 app.post('/api/login', (req, res) => {
@@ -117,7 +141,6 @@ app.post('/api/announcements', (req, res) => {
 
 // --- FOROS ---
 app.get('/api/forums', (req, res) => {
-  // Obtenemos posts con conteo real de likes y comentarios
   const sql = `
     SELECT fp.*, u.role,
     (SELECT COUNT(*) FROM forum_likes WHERE post_id = fp.id) as likesCount,
@@ -133,10 +156,10 @@ app.get('/api/forums', (req, res) => {
         user_id: post.user_id,
         author: post.author_name,
         role: post.role,
-        timeAgo: new Date(post.created_at).toLocaleDateString(), 
+        timeAgo: calculateTimeAgo(post.created_at), 
         avatar: `https://ui-avatars.com/api/?name=${post.author_name}&background=random`,
         content: post.content,
-        image: post.image, // Base64 or URL
+        image: post.image, 
         commentsCount: post.commentsCount, 
         likesCount: post.likesCount,    
         sharesCount: post.shares_count    
@@ -156,14 +179,13 @@ app.post('/api/forums', (req, res) => {
 
 app.delete('/api/forums/:id', (req, res) => {
     const postId = req.params.id;
-    // Assuming check ownership happens in frontend or simpler logic here
     db.query('DELETE FROM forum_posts WHERE id = ?', [postId], (err, result) => {
         if (err) return res.status(500).json(err);
         res.json({ success: true });
     });
 });
 
-// Likes
+// Likes & Notificaciones
 app.post('/api/forums/like', (req, res) => {
     const { post_id, user_id } = req.body;
     const checkSql = 'SELECT * FROM forum_likes WHERE post_id = ? AND user_id = ?';
@@ -177,6 +199,15 @@ app.post('/api/forums/like', (req, res) => {
         } else {
             db.query('INSERT INTO forum_likes (post_id, user_id) VALUES (?, ?)', [post_id, user_id], (err2) => {
                 if(err2) return res.status(500).json(err2);
+                
+                // NOTIFICAR AL AUTOR DEL POST
+                db.query('SELECT user_id, content FROM forum_posts WHERE id = ?', [post_id], (err3, posts) => {
+                    if (!err3 && posts.length > 0 && posts[0].user_id !== user_id) {
+                        const snippet = posts[0].content.substring(0, 20) + '...';
+                        createNotification(posts[0].user_id, 'FOROS', `A alguien le gustó tu post: "${snippet}"`);
+                    }
+                });
+
                 res.json({ success: true, action: 'added' });
             });
         }
@@ -200,7 +231,7 @@ app.post('/api/forums/share', (req, res) => {
     });
 });
 
-// Comments
+// Comments & Notificaciones
 app.get('/api/forums/:id/comments', (req, res) => {
     const postId = req.params.id;
     const sql = `
@@ -222,6 +253,18 @@ app.post('/api/forums/:id/comments', (req, res) => {
     const sql = 'INSERT INTO forum_comments (post_id, user_id, content) VALUES (?, ?, ?)';
     db.query(sql, [postId, user_id, content], (err, result) => {
         if(err) return res.status(500).json(err);
+
+        // NOTIFICAR AL AUTOR DEL POST
+        db.query('SELECT user_id FROM forum_posts WHERE id = ?', [postId], (err2, posts) => {
+            if (!err2 && posts.length > 0 && posts[0].user_id !== user_id) {
+                // Obtener nombre de quien comenta
+                db.query('SELECT name FROM users WHERE id = ?', [user_id], (err3, users) => {
+                     const commenterName = users[0]?.name || 'Alguien';
+                     createNotification(posts[0].user_id, 'FOROS', `${commenterName} comentó en tu publicación.`);
+                });
+            }
+        });
+
         res.json({ success: true });
     });
 });
@@ -304,6 +347,17 @@ app.post('/api/study_groups/join', (req, res) => {
             if (err.code === 'ER_DUP_ENTRY') return res.json({ success: false, message: 'Ya eres miembro de este grupo' });
             return res.status(500).json(err);
         }
+
+        // NOTIFICAR AL CREADOR DEL GRUPO
+        db.query('SELECT created_by, title FROM study_groups WHERE id = ?', [group_id], (err2, groups) => {
+             if(!err2 && groups.length > 0 && groups[0].created_by !== user_id) {
+                 db.query('SELECT name FROM users WHERE id = ?', [user_id], (err3, users) => {
+                     const joinerName = users[0]?.name || 'Un estudiante';
+                     createNotification(groups[0].created_by, 'AVISOS', `${joinerName} se unió a tu grupo "${groups[0].title}".`);
+                 });
+             }
+        });
+
         res.json({ success: true, message: 'Te has unido al grupo' });
     });
 });
@@ -353,7 +407,7 @@ app.post('/api/clubs/join', (req, res) => {
     });
 });
 
-// --- NOTIFICACIONES ---
+// --- NOTIFICACIONES (FUNCIONAL) ---
 app.get('/api/notifications', (req, res) => {
     const user_id = req.query.user_id;
     if (!user_id) return res.json([]);
@@ -362,10 +416,20 @@ app.get('/api/notifications', (req, res) => {
         if (err) return res.status(500).json(err);
         const formatted = data.map(n => ({
             ...n,
+            // Calculate real time ago
+            time_ago: calculateTimeAgo(n.created_at),
             color: n.type === 'AVISOS' ? 'bg-red-100 text-red-600' : 
                    n.type === 'EVENTOS' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
         }));
         res.json(formatted);
+    });
+});
+
+app.put('/api/notifications/:id/read', (req, res) => {
+    const id = req.params.id;
+    db.query('UPDATE notifications SET is_read = 1 WHERE id = ?', [id], (err) => {
+        if(err) return res.status(500).json(err);
+        res.json({success: true});
     });
 });
 

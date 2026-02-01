@@ -25,6 +25,13 @@ export const NotificationsScreen: React.FC = () => {
            .catch(err => setLoading(false));
    }, []);
 
+   const handleRead = async (id: number) => {
+        // Optimistic update
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+        
+        await fetch(`${API_URL}/notifications/${id}/read`, { method: 'PUT' });
+   };
+
    const filteredNotifs = activeFilter === 'ALL' ? notifications : notifications.filter(n => n.type === activeFilter);
 
    const filters = [
@@ -68,17 +75,23 @@ export const NotificationsScreen: React.FC = () => {
          <div className="space-y-3">
             {loading ? <p className="text-center text-gray-400">Cargando...</p> : 
              filteredNotifs.length > 0 ? filteredNotifs.map((item) => (
-               <div key={item.id} className="bg-white rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow border border-gray-50">
+               <div 
+                  key={item.id} 
+                  onClick={() => handleRead(item.id)}
+                  className={`rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all border cursor-pointer
+                     ${item.is_read ? 'bg-white border-gray-100 opacity-70' : 'bg-blue-50/50 border-blue-100'}
+                  `}
+               >
                   <div className="flex items-center gap-4">
                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${item.color_class || 'bg-gray-100 text-gray-600'}`}>
                         {getIcon(item.type)}
                      </div>
                      <div>
-                        <p className="font-bold text-gray-800 text-sm md:text-base">{item.title}</p>
+                        <p className={`text-sm md:text-base ${item.is_read ? 'font-medium text-gray-600' : 'font-bold text-gray-900'}`}>{item.title}</p>
                         <p className="text-xs text-gray-400 font-medium">{item.time_ago}</p>
                      </div>
                   </div>
-                  {!item.is_read && <div className="w-2 h-2 rounded-full bg-espe-green"></div>}
+                  {!item.is_read && <div className="w-2 h-2 rounded-full bg-espe-green shadow-sm shadow-green-200"></div>}
                </div>
             )) : (
                <div className="text-center py-10 text-gray-400">
