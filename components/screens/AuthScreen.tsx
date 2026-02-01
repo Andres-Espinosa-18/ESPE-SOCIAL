@@ -21,13 +21,16 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
   const [regPass, setRegPass] = useState('');
   const [regConfirmPass, setRegConfirmPass] = useState('');
 
+  // Dynamic API URL based on current location (IP or localhost)
+  const API_URL = `http://${window.location.hostname}:3000/api`;
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-        const response = await fetch('http://localhost:3000/api/login', {
+        const response = await fetch(`${API_URL}/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
@@ -61,7 +64,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
 
     setLoading(true);
     try {
-        const response = await fetch('http://localhost:3000/api/register', {
+        const response = await fetch(`${API_URL}/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 

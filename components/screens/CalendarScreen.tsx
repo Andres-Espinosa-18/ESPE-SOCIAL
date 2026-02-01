@@ -27,13 +27,16 @@ export const CalendarScreen: React.FC = () => {
       { class: 'bg-gray-800', name: 'Negro' }
   ];
 
+  // Dynamic API URL
+  const API_URL = `http://${window.location.hostname}:3000/api`;
+
   // Load User Events
   const fetchEvents = () => {
       const userString = localStorage.getItem('user');
       if (!userString) return;
       const user: User = JSON.parse(userString);
 
-      fetch(`http://localhost:3000/api/calendar?user_id=${user.id}`)
+      fetch(`${API_URL}/calendar?user_id=${user.id}`)
           .then(res => res.json())
           .then(data => {
               setEvents(data);
@@ -91,7 +94,7 @@ export const CalendarScreen: React.FC = () => {
       const dateStr = `${year}-${mStr}-${dStr}`;
 
       try {
-          const res = await fetch('http://localhost:3000/api/calendar', {
+          const res = await fetch(`${API_URL}/calendar`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

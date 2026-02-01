@@ -23,11 +23,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
   const user: User | null = userString ? JSON.parse(userString) : null;
   const isAdmin = user?.role === 'admin';
 
+  // Dynamic API URL
+  const API_URL = `http://${window.location.hostname}:3000/api`;
+
   // Fetch Data
   useEffect(() => {
     setLoading(true);
     // 1. Fetch News
-    fetch('http://localhost:3000/api/news')
+    fetch(`${API_URL}/news`)
       .then(res => res.json())
       .then(data => setNewsData(data))
       .catch(err => console.error(err));
@@ -37,7 +40,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
 
     // 3. Fetch Calendar Events for Mini Calendar
     if (user) {
-        fetch(`http://localhost:3000/api/calendar?user_id=${user.id}`)
+        fetch(`${API_URL}/calendar?user_id=${user.id}`)
             .then(res => res.json())
             .then(data => setCalendarEvents(data))
             .catch(err => console.error(err));
@@ -45,7 +48,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
   }, []);
 
   const fetchAnnouncement = (type: string) => {
-      fetch(`http://localhost:3000/api/announcements?type=${type}`)
+      fetch(`${API_URL}/announcements?type=${type}`)
         .then(res => res.json())
         .then(data => {
             if (data && data.length > 0) {
@@ -77,7 +80,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
       }
 
       try {
-          const res = await fetch('http://localhost:3000/api/announcements', {
+          const res = await fetch(`${API_URL}/announcements`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

@@ -15,9 +15,12 @@ export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({
   const userString = localStorage.getItem('user');
   const user: User | null = userString ? JSON.parse(userString) : null;
 
+  // Dynamic API URL
+  const API_URL = `http://${window.location.hostname}:3000/api`;
+
   const fetchPosts = () => {
       setLoading(true);
-      fetch('http://localhost:3000/api/forums')
+      fetch(`${API_URL}/forums`)
       .then(res => res.json())
       .then(data => {
           setPosts(data);
@@ -28,7 +31,7 @@ export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({
 
   const fetchMyLikes = () => {
       if (!user) return;
-      fetch(`http://localhost:3000/api/forums/mylikes?user_id=${user.id}`)
+      fetch(`${API_URL}/forums/mylikes?user_id=${user.id}`)
           .then(res => res.json())
           .then(data => setMyLikes(data));
   };
@@ -48,7 +51,7 @@ export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({
         p.id === postId ? { ...p, likesCount: p.likesCount + (isLiked ? -1 : 1) } : p
     ));
 
-    await fetch('http://localhost:3000/api/forums/like', {
+    await fetch(`${API_URL}/forums/like`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ post_id: postId, user_id: user.id })
@@ -61,7 +64,7 @@ export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({
       alert('¡Enlace copiado al portapapeles!');
       
       // Update share count in DB
-      await fetch('http://localhost:3000/api/forums/share', {
+      await fetch(`${API_URL}/forums/share`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ post_id: postId })
@@ -75,7 +78,7 @@ export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({
   const handleDeletePost = async (postId: string) => {
       if(!confirm('¿Estás seguro de eliminar esta publicación?')) return;
       
-      await fetch(`http://localhost:3000/api/forums/${postId}`, {
+      await fetch(`${API_URL}/forums/${postId}`, {
           method: 'DELETE'
       });
       setPosts(prev => prev.filter(p => p.id !== postId));
@@ -89,7 +92,7 @@ export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({
           setActiveComments(postId);
           if (!commentsData[postId]) {
               // Fetch comments
-              const res = await fetch(`http://localhost:3000/api/forums/${postId}/comments`);
+              const res = await fetch(`${API_URL}/forums/${postId}/comments`);
               const data = await res.json();
               setCommentsData(prev => ({ ...prev, [postId]: data }));
           }
@@ -99,7 +102,7 @@ export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({
   const submitComment = async (postId: string) => {
       if (!newComment.trim() || !user) return;
       
-      const res = await fetch(`http://localhost:3000/api/forums/${postId}/comments`, {
+      const res = await fetch(`${API_URL}/forums/${postId}/comments`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ user_id: user.id, content: newComment })
@@ -108,7 +111,7 @@ export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({
       if (res.ok) {
           setNewComment('');
           // Refresh comments for this post
-          const resC = await fetch(`http://localhost:3000/api/forums/${postId}/comments`);
+          const resC = await fetch(`${API_URL}/forums/${postId}/comments`);
           const data = await resC.json();
           setCommentsData(prev => ({ ...prev, [postId]: data }));
           
@@ -268,6 +271,9 @@ export const CreateForumScreen: React.FC<{ onBack: () => void }> = ({ onBack }) 
    
    const emojis = ['😀', '😂', '😍', '🤔', '😎', '😭', '👍', '🔥', '🎉', '❤️'];
 
+   // Dynamic API URL
+   const API_URL = `http://${window.location.hostname}:3000/api`;
+
    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
        const file = e.target.files?.[0];
        if (file) {
@@ -293,7 +299,7 @@ export const CreateForumScreen: React.FC<{ onBack: () => void }> = ({ onBack }) 
 
        setLoading(true);
        try {
-           const res = await fetch('http://localhost:3000/api/forums', {
+           const res = await fetch(`${API_URL}/forums`, {
                method: 'POST',
                headers: {'Content-Type': 'application/json'},
                body: JSON.stringify({
@@ -373,13 +379,16 @@ export const StudyGroupsScreen: React.FC<{ onSelect: (g: StudyGroup) => void, on
    const [searchTerm, setSearchTerm] = useState('');
    const [loading, setLoading] = useState(true);
 
+   // Dynamic API URL
+   const API_URL = `http://${window.location.hostname}:3000/api`;
+
    const loadGroups = () => {
        setLoading(true);
        const userString = localStorage.getItem('user');
        if (!userString) return;
        const user = JSON.parse(userString);
 
-       const endpoint = activeTab === 'EXPLORE' ? 'http://localhost:3000/api/study_groups' : `http://localhost:3000/api/study_groups/my?user_id=${user.id}`;
+       const endpoint = activeTab === 'EXPLORE' ? `${API_URL}/study_groups` : `${API_URL}/study_groups/my?user_id=${user.id}`;
 
        fetch(endpoint)
        .then(res => res.json())
@@ -404,7 +413,7 @@ export const StudyGroupsScreen: React.FC<{ onSelect: (g: StudyGroup) => void, on
        if (!userString) return;
        const user = JSON.parse(userString);
 
-       const res = await fetch('http://localhost:3000/api/study_groups/join', {
+       const res = await fetch(`${API_URL}/study_groups/join`, {
            method: 'POST',
            headers: {'Content-Type': 'application/json'},
            body: JSON.stringify({ group_id: group.id, user_id: user.id })
@@ -506,15 +515,18 @@ export const CreateStudyGroupScreen: React.FC<{ onBack: () => void }> = ({ onBac
    const [formData, setFormData] = useState({ title: '', description: '', topic: '', meeting_date: '' });
    const [loading, setLoading] = useState(false);
 
+   // Dynamic API URL
+   const API_URL = `http://${window.location.hostname}:3000/api`;
+
    const handleSubmit = async (e: React.FormEvent) => {
        e.preventDefault();
        const userString = localStorage.getItem('user');
        if (!userString) return;
-       const user = JSON.parse(userString);
+       const user: User = JSON.parse(userString);
 
        setLoading(true);
        try {
-           const res = await fetch('http://localhost:3000/api/study_groups', {
+           const res = await fetch(`${API_URL}/study_groups`, {
                method: 'POST',
                headers: {'Content-Type': 'application/json'},
                body: JSON.stringify({ ...formData, user_id: user.id })
@@ -598,10 +610,13 @@ export const StudyGroupDetailScreen: React.FC<{ group: StudyGroup | null, onBack
    const [showMembersModal, setShowMembersModal] = useState(false);
    const [members, setMembers] = useState<StudyGroupMember[]>([]);
 
+   // Dynamic API URL
+   const API_URL = `http://${window.location.hostname}:3000/api`;
+
    if (!group) return null;
 
    const fetchMembers = () => {
-       fetch(`http://localhost:3000/api/study_groups/${group.id}/members`)
+       fetch(`${API_URL}/study_groups/${group.id}/members`)
            .then(res => res.json())
            .then(data => setMembers(data));
    };

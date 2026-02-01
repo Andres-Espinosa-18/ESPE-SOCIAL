@@ -8,12 +8,15 @@ export const NotificationsScreen: React.FC = () => {
    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
    const [loading, setLoading] = useState(true);
 
+   // Dynamic API URL
+   const API_URL = `http://${window.location.hostname}:3000/api`;
+
    useEffect(() => {
        const userString = localStorage.getItem('user');
        if (!userString) return;
        const user: User = JSON.parse(userString);
 
-       fetch(`http://localhost:3000/api/notifications?user_id=${user.id}`)
+       fetch(`${API_URL}/notifications?user_id=${user.id}`)
            .then(res => res.json())
            .then(data => {
                setNotifications(data);
@@ -92,12 +95,15 @@ export const ClubsScreen: React.FC = () => {
    const [clubs, setClubs] = useState<any[]>([]);
    const [selectedClub, setSelectedClub] = useState<any | null>(null); // State for modal
    
+   // Dynamic API URL
+   const API_URL = `http://${window.location.hostname}:3000/api`;
+
    const loadClubs = () => {
        const userString = localStorage.getItem('user');
        const user: User | null = userString ? JSON.parse(userString) : null;
        const userId = user ? user.id : 0;
 
-       fetch(`http://localhost:3000/api/clubs?user_id=${userId}`)
+       fetch(`${API_URL}/clubs?user_id=${userId}`)
          .then(res => res.json())
          .then(data => setClubs(data));
    };
@@ -112,7 +118,7 @@ export const ClubsScreen: React.FC = () => {
       if (!userString) return;
       const user: User = JSON.parse(userString);
 
-      const res = await fetch('http://localhost:3000/api/clubs/join', {
+      const res = await fetch(`${API_URL}/clubs/join`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ user_id: user.id, club_id: clubId })
@@ -238,6 +244,9 @@ export const SuggestionsScreen: React.FC = () => {
    const [message, setMessage] = useState('');
    const [loading, setLoading] = useState(false);
 
+   // Dynamic API URL
+   const API_URL = `http://${window.location.hostname}:3000/api`;
+
    const handleSubmit = async (e: React.FormEvent) => {
        e.preventDefault();
        const userString = localStorage.getItem('user');
@@ -246,7 +255,7 @@ export const SuggestionsScreen: React.FC = () => {
 
        setLoading(true);
        try {
-           const res = await fetch('http://localhost:3000/api/suggestions', {
+           const res = await fetch(`${API_URL}/suggestions`, {
                method: 'POST',
                headers: { 'Content-Type': 'application/json' },
                body: JSON.stringify({
@@ -340,6 +349,9 @@ export const ProfileScreen: React.FC = () => {
     const [editBio, setEditBio] = useState('');
     const [editPhone, setEditPhone] = useState('');
 
+    // Dynamic API URL
+    const API_URL = `http://${window.location.hostname}:3000/api`;
+
     useEffect(() => {
         const localUser = localStorage.getItem('user');
         if (localUser) {
@@ -349,7 +361,7 @@ export const ProfileScreen: React.FC = () => {
     }, []);
 
     const fetchUser = (id: number) => {
-        fetch(`http://localhost:3000/api/users/${id}`)
+        fetch(`${API_URL}/users/${id}`)
             .then(res => res.json())
             .then(data => {
                 setUser(data);
@@ -360,7 +372,7 @@ export const ProfileScreen: React.FC = () => {
 
     const handleSave = async () => {
         if (!user) return;
-        const res = await fetch(`http://localhost:3000/api/users/${user.id}`, {
+        const res = await fetch(`${API_URL}/users/${user.id}`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ bio: editBio, phone: editPhone })
