@@ -39,6 +39,14 @@ export interface Announcement {
   content: string;
 }
 
+export interface ForumComment {
+    id: number;
+    user_id: number;
+    author_name: string;
+    content: string;
+    created_at: string;
+}
+
 export interface ForumPost {
   id: string;
   user_id: number;
@@ -68,6 +76,13 @@ export interface StudyGroup {
   date: string;
   createdBy: string;
   members: number;
+  topic: string;
+}
+
+export interface StudyGroupMember {
+    user_id: number;
+    name: string;
+    role: string; // 'Creador' or 'Miembro'
 }
 
 export interface NotificationItem {

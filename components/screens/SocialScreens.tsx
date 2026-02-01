@@ -1,14 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ViewState, StudyGroup, ForumPost, User } from '../../types';
-import { Search, Plus, MoreHorizontal, ArrowLeft, Image as ImageIcon, Smile, Users, User as UserIcon, Heart, MessageCircle, Share2, Calendar, BookOpen, X, CheckCircle } from 'lucide-react';
+import { ViewState, StudyGroup, ForumPost, User, ForumComment, StudyGroupMember } from '../../types';
+import { Search, Plus, MoreHorizontal, ArrowLeft, Image as ImageIcon, Smile, Users, User as UserIcon, Heart, MessageCircle, Share2, Calendar, BookOpen, X, CheckCircle, Trash, Flag, Send } from 'lucide-react';
 
 /* --- FORUM SCREEN --- */
 export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({ onNavigate }) => {
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [myLikes, setMyLikes] = useState<string[]>([]);
+  const [activeComments, setActiveComments] = useState<string | null>(null); // Post ID
+  const [commentsData, setCommentsData] = useState<Record<string, ForumComment[]>>({});
+  const [newComment, setNewComment] = useState('');
+  const [activePostMenu, setActivePostMenu] = useState<string | null>(null); // Post ID for 3 dots
   
+  const userString = localStorage.getItem('user');
+  const user: User | null = userString ? JSON.parse(userString) : null;
+
   const fetchPosts = () => {
+      setLoading(true);
       fetch('http://localhost:3000/api/forums')
       .then(res => res.json())
       .then(data => {
@@ -19,9 +27,7 @@ export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({
   };
 
   const fetchMyLikes = () => {
-      const userString = localStorage.getItem('user');
-      if (!userString) return;
-      const user = JSON.parse(userString);
+      if (!user) return;
       fetch(`http://localhost:3000/api/forums/mylikes?user_id=${user.id}`)
           .then(res => res.json())
           .then(data => setMyLikes(data));
@@ -33,9 +39,7 @@ export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({
   }, []);
 
   const handleLike = async (postId: string) => {
-    const userString = localStorage.getItem('user');
-    if (!userString) return;
-    const user = JSON.parse(userString);
+    if (!user) return;
 
     // Optimistic Update
     const isLiked = myLikes.includes(postId);
@@ -51,26 +55,92 @@ export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({
     });
   };
 
+  const handleShare = async (postId: string) => {
+      const link = `${window.location.origin}/forum/${postId}`; // Simulated link
+      await navigator.clipboard.writeText(link);
+      alert('¡Enlace copiado al portapapeles!');
+      
+      // Update share count in DB
+      await fetch('http://localhost:3000/api/forums/share', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ post_id: postId })
+      });
+      
+      setPosts(prev => prev.map(p => 
+        p.id === postId ? { ...p, sharesCount: (p.sharesCount || 0) + 1 } : p
+      ));
+  };
+
+  const handleDeletePost = async (postId: string) => {
+      if(!confirm('¿Estás seguro de eliminar esta publicación?')) return;
+      
+      await fetch(`http://localhost:3000/api/forums/${postId}`, {
+          method: 'DELETE'
+      });
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      setActivePostMenu(null);
+  };
+
+  const toggleComments = async (postId: string) => {
+      if (activeComments === postId) {
+          setActiveComments(null);
+      } else {
+          setActiveComments(postId);
+          if (!commentsData[postId]) {
+              // Fetch comments
+              const res = await fetch(`http://localhost:3000/api/forums/${postId}/comments`);
+              const data = await res.json();
+              setCommentsData(prev => ({ ...prev, [postId]: data }));
+          }
+      }
+  };
+
+  const submitComment = async (postId: string) => {
+      if (!newComment.trim() || !user) return;
+      
+      const res = await fetch(`http://localhost:3000/api/forums/${postId}/comments`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ user_id: user.id, content: newComment })
+      });
+
+      if (res.ok) {
+          setNewComment('');
+          // Refresh comments for this post
+          const resC = await fetch(`http://localhost:3000/api/forums/${postId}/comments`);
+          const data = await resC.json();
+          setCommentsData(prev => ({ ...prev, [postId]: data }));
+          
+          // Update comment count locally
+          setPosts(prev => prev.map(p => p.id === postId ? { ...p, commentsCount: p.commentsCount + 1 } : p));
+      }
+  };
+
   return (
-    <div className="h-full flex flex-col relative">
+    <div className="h-full flex flex-col relative" onClick={() => setActivePostMenu(null)}>
       <div className="flex justify-between items-center mb-6">
          <h2 className="text-2xl font-bold text-gray-800">Foros de Discusión</h2>
          <div className="flex gap-2">
-            <button onClick={fetchPosts} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200 text-gray-600 text-xs font-bold px-4">Actualizar</button>
+            <button onClick={fetchPosts} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200 text-gray-600 text-xs font-bold px-4 flex items-center gap-2">
+                {loading && <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>}
+                Actualizar
+            </button>
          </div>
       </div>
 
       <div className="space-y-6 pb-20 max-w-2xl mx-auto w-full">
-         {loading ? (
+         {loading && posts.length === 0 ? (
              <div className="text-center text-gray-400">Cargando discusiones...</div>
          ) : posts.length === 0 ? (
              <div className="text-center text-gray-400">Aún no hay discusiones. ¡Sé el primero!</div>
          ) : (
              posts.map(post => {
             const isLiked = myLikes.includes(post.id);
+            const isMine = user && user.id === post.user_id;
             
             return (
-            <div key={post.id} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div key={post.id} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative">
                <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                      <img src={post.avatar} className="w-12 h-12 rounded-full border-2 border-white shadow-sm" alt="avatar" />
@@ -79,7 +149,27 @@ export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({
                         <p className="text-xs text-gray-400 font-medium">{post.timeAgo}</p>
                      </div>
                   </div>
-                  <button className="text-gray-400 hover:bg-gray-100 p-1 rounded-full"><MoreHorizontal size={20} /></button>
+                  <div className="relative">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setActivePostMenu(activePostMenu === post.id ? null : post.id); }}
+                        className="text-gray-400 hover:bg-gray-100 p-1 rounded-full"
+                      >
+                          <MoreHorizontal size={20} />
+                      </button>
+                      {activePostMenu === post.id && (
+                          <div className="absolute right-0 top-8 bg-white shadow-xl border rounded-xl z-20 w-40 overflow-hidden animate-fade-in">
+                              {isMine ? (
+                                  <button onClick={() => handleDeletePost(post.id)} className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                      <Trash size={14} /> Eliminar
+                                  </button>
+                              ) : (
+                                  <button onClick={() => alert('Reportado')} className="w-full text-left px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+                                      <Flag size={14} /> Reportar
+                                  </button>
+                              )}
+                          </div>
+                      )}
+                  </div>
                </div>
 
                {post.content && (
@@ -103,16 +193,56 @@ export const ForumsScreen: React.FC<{ onNavigate: (v: ViewState) => void }> = ({
                         <Heart size={20} fill={isLiked ? "currentColor" : "none"} />
                         <span>{post.likesCount}</span>
                      </button>
-                     <button className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-blue-500 transition-colors">
+                     <button 
+                        onClick={() => toggleComments(post.id)}
+                        className={`flex items-center gap-2 text-sm font-bold transition-colors ${activeComments === post.id ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'}`}
+                     >
                         <MessageCircle size={20} />
                         <span>{post.commentsCount}</span>
                      </button>
-                     <button className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-green-500 transition-colors">
+                     <button 
+                        onClick={() => handleShare(post.id)}
+                        className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-green-500 transition-colors"
+                     >
                         <Share2 size={20} />
                         <span>{post.sharesCount}</span>
                      </button>
                   </div>
                </div>
+
+               {/* COMMENTS SECTION */}
+               {activeComments === post.id && (
+                   <div className="mt-4 pt-4 border-t border-gray-50 animate-fade-in">
+                       <div className="space-y-3 mb-4 max-h-60 overflow-y-auto custom-scrollbar">
+                           {commentsData[post.id]?.length > 0 ? (
+                               commentsData[post.id].map(c => (
+                                   <div key={c.id} className="bg-gray-50 p-3 rounded-xl text-sm">
+                                       <span className="font-bold text-gray-800 text-xs block">{c.author_name}</span>
+                                       <span className="text-gray-600">{c.content}</span>
+                                   </div>
+                               ))
+                           ) : (
+                               <p className="text-xs text-center text-gray-400">Sé el primero en comentar.</p>
+                           )}
+                       </div>
+                       <div className="flex items-center gap-2">
+                           <input 
+                               type="text" 
+                               value={newComment}
+                               onChange={e => setNewComment(e.target.value)}
+                               placeholder="Escribe un comentario..."
+                               className="flex-1 bg-gray-100 border-none rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-espe-green outline-none"
+                           />
+                           <button 
+                                onClick={() => submitComment(post.id)}
+                                disabled={!newComment.trim()}
+                                className="p-2 bg-espe-green text-white rounded-full hover:bg-espe-darkGreen disabled:opacity-50"
+                           >
+                               <Send size={16} />
+                           </button>
+                       </div>
+                   </div>
+               )}
             </div>
          )})
          )}
@@ -215,22 +345,21 @@ export const CreateForumScreen: React.FC<{ onBack: () => void }> = ({ onBack }) 
              </div>
          )}
 
-         {/* Emoji Picker */}
-         {showEmoji && (
-             <div className="bg-white border rounded-xl shadow-lg p-2 flex gap-2 mb-2 animate-fade-in absolute bottom-20">
-                 {emojis.map(e => (
-                     <button key={e} onClick={() => addEmoji(e)} className="text-xl hover:scale-125 transition-transform">{e}</button>
-                 ))}
-             </div>
-         )}
+         <div className="mt-auto border-t pt-4 relative">
+             {/* Emoji Picker positioned relative to this footer */}
+             {showEmoji && (
+                 <div className="absolute bottom-full mb-2 left-0 bg-white border rounded-xl shadow-lg p-2 flex gap-2 animate-fade-in z-10">
+                     {emojis.map(e => (
+                         <button key={e} onClick={() => addEmoji(e)} className="text-xl hover:scale-125 transition-transform">{e}</button>
+                     ))}
+                 </div>
+             )}
 
-         <div className="mt-auto border-t pt-4">
              <div className="flex gap-4 text-espe-green mb-4 items-center">
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
                 <button onClick={() => fileInputRef.current?.click()} className="p-2 hover:bg-green-50 rounded-lg"><ImageIcon size={24} /></button>
                 
-                <button onClick={() => setShowEmoji(!showEmoji)} className="p-2 hover:bg-green-50 rounded-lg"><Smile size={24} /></button>
-                {/* Location removed as requested */}
+                <button onClick={() => setShowEmoji(!showEmoji)} className={`p-2 hover:bg-green-50 rounded-lg ${showEmoji ? 'bg-green-50' : ''}`}><Smile size={24} /></button>
              </div>
          </div>
       </div>
@@ -466,8 +595,22 @@ export const CreateStudyGroupScreen: React.FC<{ onBack: () => void }> = ({ onBac
 }
 
 export const StudyGroupDetailScreen: React.FC<{ group: StudyGroup | null, onBack: () => void }> = ({ group, onBack }) => {
+   const [showMembersModal, setShowMembersModal] = useState(false);
+   const [members, setMembers] = useState<StudyGroupMember[]>([]);
+
    if (!group) return null;
-   // In a real app, fetch members here
+
+   const fetchMembers = () => {
+       fetch(`http://localhost:3000/api/study_groups/${group.id}/members`)
+           .then(res => res.json())
+           .then(data => setMembers(data));
+   };
+
+   const openMembers = () => {
+       setShowMembersModal(true);
+       fetchMembers();
+   };
+
    return (
       <div className="bg-white min-h-[500px] rounded-3xl p-8 relative shadow-sm border border-gray-100 max-w-3xl mx-auto">
          <button onClick={onBack} className="mb-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200"><ArrowLeft size={24}/></button>
@@ -504,13 +647,40 @@ export const StudyGroupDetailScreen: React.FC<{ group: StudyGroup | null, onBack
              </div>
          </div>
 
-         {/* Placeholder for member actions */}
          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center gap-3">
              <Users size={20} className="text-blue-600"/>
              <p className="text-sm text-blue-800 font-medium">
-                 Eres miembro de este grupo. <button className="underline font-bold">Ver lista de miembros</button>
+                 Eres miembro de este grupo. <button onClick={openMembers} className="underline font-bold hover:text-blue-900">Ver lista de miembros</button>
              </p>
          </div>
+
+         {/* MEMBER MODAL */}
+         {showMembersModal && (
+             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowMembersModal(false)}></div>
+                 <div className="relative bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl animate-fade-in-up">
+                     <div className="flex justify-between items-center mb-4">
+                         <h3 className="font-bold text-gray-800">Miembros del Grupo</h3>
+                         <button onClick={() => setShowMembersModal(false)}><X size={20}/></button>
+                     </div>
+                     <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
+                         {members.map((m, idx) => (
+                             <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                 <div className="flex items-center gap-2">
+                                     <div className="w-8 h-8 rounded-full bg-espe-green/20 text-espe-green flex items-center justify-center font-bold text-xs">
+                                         {m.name.charAt(0)}
+                                     </div>
+                                     <span className="font-bold text-sm text-gray-700">{m.name}</span>
+                                 </div>
+                                 <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${m.role === 'Creador' ? 'bg-purple-100 text-purple-600' : 'bg-gray-200 text-gray-600'}`}>
+                                     {m.role}
+                                 </span>
+                             </div>
+                         ))}
+                     </div>
+                 </div>
+             </div>
+         )}
       </div>
    );
 }

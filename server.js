@@ -95,10 +95,11 @@ app.post('/api/announcements', (req, res) => {
 
 // --- FOROS ---
 app.get('/api/forums', (req, res) => {
-  // Obtenemos posts con conteo real de likes
+  // Obtenemos posts con conteo real de likes y comentarios
   const sql = `
     SELECT fp.*, u.role,
-    (SELECT COUNT(*) FROM forum_likes WHERE post_id = fp.id) as likesCount
+    (SELECT COUNT(*) FROM forum_likes WHERE post_id = fp.id) as likesCount,
+    (SELECT COUNT(*) FROM forum_comments WHERE post_id = fp.id) as commentsCount
     FROM forum_posts fp 
     JOIN users u ON fp.user_id = u.id 
     ORDER BY fp.created_at DESC
@@ -114,9 +115,9 @@ app.get('/api/forums', (req, res) => {
         avatar: `https://ui-avatars.com/api/?name=${post.author_name}&background=random`,
         content: post.content,
         image: post.image, // Base64 or URL
-        commentsCount: 0, 
+        commentsCount: post.commentsCount, 
         likesCount: post.likesCount,    
-        sharesCount: 0    
+        sharesCount: post.shares_count    
     }));
     res.json(formatted);
   });
@@ -131,20 +132,27 @@ app.post('/api/forums', (req, res) => {
   });
 });
 
+app.delete('/api/forums/:id', (req, res) => {
+    const postId = req.params.id;
+    // Assuming check ownership happens in frontend or simpler logic here
+    db.query('DELETE FROM forum_posts WHERE id = ?', [postId], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ success: true });
+    });
+});
+
+// Likes
 app.post('/api/forums/like', (req, res) => {
     const { post_id, user_id } = req.body;
-    // Toggle like: Insert or Delete
     const checkSql = 'SELECT * FROM forum_likes WHERE post_id = ? AND user_id = ?';
     db.query(checkSql, [post_id, user_id], (err, result) => {
         if (err) return res.status(500).json(err);
         if (result.length > 0) {
-            // Ya existe, borrar
             db.query('DELETE FROM forum_likes WHERE post_id = ? AND user_id = ?', [post_id, user_id], (err2) => {
                 if(err2) return res.status(500).json(err2);
                 res.json({ success: true, action: 'removed' });
             });
         } else {
-            // No existe, crear
             db.query('INSERT INTO forum_likes (post_id, user_id) VALUES (?, ?)', [post_id, user_id], (err2) => {
                 if(err2) return res.status(500).json(err2);
                 res.json({ success: true, action: 'added' });
@@ -160,6 +168,42 @@ app.get('/api/forums/mylikes', (req, res) => {
         res.json(data.map(r => r.post_id.toString()));
     });
 });
+
+// Shares
+app.post('/api/forums/share', (req, res) => {
+    const { post_id } = req.body;
+    db.query('UPDATE forum_posts SET shares_count = shares_count + 1 WHERE id = ?', [post_id], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ success: true });
+    });
+});
+
+// Comments
+app.get('/api/forums/:id/comments', (req, res) => {
+    const postId = req.params.id;
+    const sql = `
+        SELECT fc.*, u.name as author_name 
+        FROM forum_comments fc 
+        JOIN users u ON fc.user_id = u.id 
+        WHERE fc.post_id = ? 
+        ORDER BY fc.created_at ASC
+    `;
+    db.query(sql, [postId], (err, data) => {
+        if(err) return res.status(500).json(err);
+        res.json(data);
+    });
+});
+
+app.post('/api/forums/:id/comments', (req, res) => {
+    const postId = req.params.id;
+    const { user_id, content } = req.body;
+    const sql = 'INSERT INTO forum_comments (post_id, user_id, content) VALUES (?, ?, ?)';
+    db.query(sql, [postId, user_id, content], (err, result) => {
+        if(err) return res.status(500).json(err);
+        res.json({ success: true });
+    });
+});
+
 
 // --- GRUPOS DE ESTUDIO ---
 app.get('/api/study_groups', (req, res) => {
@@ -189,7 +233,6 @@ app.get('/api/study_groups', (req, res) => {
 
 app.get('/api/study_groups/my', (req, res) => {
     const user_id = req.query.user_id;
-    // Grupos donde soy miembro o creador
     const sql = `
         SELECT sg.*, u.name as createdBy_name,
         (SELECT COUNT(*) FROM study_group_members WHERE group_id = sg.id) as membersCount
@@ -223,7 +266,6 @@ app.post('/api/study_groups', (req, res) => {
         if (err) return res.status(500).json(err);
         const newGroupId = result.insertId;
         
-        // Unir al creador automáticamente como miembro aceptado
         db.query('INSERT INTO study_group_members (group_id, user_id, status) VALUES (?, ?, ?)', 
             [newGroupId, user_id, 'accepted'], 
             (err2) => {
@@ -235,7 +277,6 @@ app.post('/api/study_groups', (req, res) => {
 
 app.post('/api/study_groups/join', (req, res) => {
     const { group_id, user_id } = req.body;
-    // Por defecto 'accepted' para simplificar, en un sistema real sería 'pending' si el grupo es privado
     const sql = 'INSERT INTO study_group_members (group_id, user_id, status) VALUES (?, ?, ?)';
     db.query(sql, [group_id, user_id, 'accepted'], (err, result) => {
         if (err) {
@@ -243,6 +284,23 @@ app.post('/api/study_groups/join', (req, res) => {
             return res.status(500).json(err);
         }
         res.json({ success: true, message: 'Te has unido al grupo' });
+    });
+});
+
+app.get('/api/study_groups/:id/members', (req, res) => {
+    const groupId = req.params.id;
+    const sql = `
+        SELECT u.id as user_id, u.name, 
+        CASE WHEN sg.created_by = u.id THEN 'Creador' ELSE 'Miembro' END as role
+        FROM study_group_members sgm
+        JOIN users u ON sgm.user_id = u.id
+        JOIN study_groups sg ON sgm.group_id = sg.id
+        WHERE sgm.group_id = ?
+        ORDER BY role ASC, u.name ASC
+    `;
+    db.query(sql, [groupId], (err, data) => {
+        if(err) return res.status(500).json(err);
+        res.json(data);
     });
 });
 

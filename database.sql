@@ -43,7 +43,19 @@ CREATE TABLE IF NOT EXISTS forum_posts (
     author_name VARCHAR(100),
     content TEXT NOT NULL,
     image LONGTEXT, -- Changed to LONGTEXT to support Base64 images
+    shares_count INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Tabla de Comentarios en Foros
+CREATE TABLE IF NOT EXISTS forum_comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT NOT NULL,
+    user_id INT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES forum_posts(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
@@ -52,7 +64,7 @@ CREATE TABLE IF NOT EXISTS forum_likes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     post_id INT NOT NULL,
     user_id INT NOT NULL,
-    FOREIGN KEY (post_id) REFERENCES forum_posts(id),
+    FOREIGN KEY (post_id) REFERENCES forum_posts(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id),
     UNIQUE(post_id, user_id)
 );
