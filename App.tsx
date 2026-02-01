@@ -5,7 +5,7 @@ import AuthScreen from './components/screens/AuthScreen';
 import Dashboard from './components/screens/Dashboard';
 import { CalendarScreen } from './components/screens/CalendarScreen';
 import { ForumsScreen, CreateForumScreen, StudyGroupsScreen, StudyGroupDetailScreen, CreateStudyGroupScreen } from './components/screens/SocialScreens';
-import { NotificationsScreen, SuggestionsScreen, NewsDetailScreen, ClubsScreen } from './components/screens/SecondaryScreens';
+import { NotificationsScreen, SuggestionsScreen, NewsDetailScreen, ClubsScreen, ProfileScreen } from './components/screens/SecondaryScreens';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>(ViewState.AUTH);
@@ -17,6 +17,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('user');
     setView(ViewState.AUTH);
   };
 
@@ -62,6 +63,7 @@ const App: React.FC = () => {
       {view === ViewState.CLUBS && <ClubsScreen />}
       {view === ViewState.NOTIFICATIONS && <NotificationsScreen />}
       {view === ViewState.SUGGESTIONS && <SuggestionsScreen />}
+      {view === ViewState.PROFILE && <ProfileScreen />}
       {view === ViewState.NEWS_DETAIL && selectedNews && (
          <NewsDetailScreen news={selectedNews} onBack={() => setView(ViewState.HOME)} />
       )}

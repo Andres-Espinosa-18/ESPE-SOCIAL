@@ -27,7 +27,7 @@ db.getConnection((err, connection) => {
   }
 });
 
-// --- AUTENTICACIÓN ---
+// --- AUTENTICACIÓN & PERFIL ---
 
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
@@ -52,6 +52,28 @@ app.post('/api/register', (req, res) => {
     }
     return res.json({ success: true, message: 'Registrado correctamente' });
   });
+});
+
+app.get('/api/users/:id', (req, res) => {
+    const userId = req.params.id;
+    db.query('SELECT * FROM users WHERE id = ?', [userId], (err, result) => {
+        if(err) return res.status(500).json(err);
+        if(result.length > 0) {
+            res.json(result[0]);
+        } else {
+            res.status(404).json({message: 'Usuario no encontrado'});
+        }
+    });
+});
+
+app.put('/api/users/:id', (req, res) => {
+    const userId = req.params.id;
+    const { bio, phone } = req.body;
+    const sql = 'UPDATE users SET bio = ?, phone = ? WHERE id = ?';
+    db.query(sql, [bio, phone, userId], (err, result) => {
+        if(err) return res.status(500).json(err);
+        res.json({ success: true });
+    });
 });
 
 // --- NOTICIAS ---
@@ -207,7 +229,6 @@ app.post('/api/forums/:id/comments', (req, res) => {
 
 // --- GRUPOS DE ESTUDIO ---
 app.get('/api/study_groups', (req, res) => {
-    // Retorna grupos con conteo de miembros
     const sql = `
         SELECT sg.*, u.name as createdBy_name,
         (SELECT COUNT(*) FROM study_group_members WHERE group_id = sg.id) as membersCount
@@ -345,6 +366,16 @@ app.get('/api/notifications', (req, res) => {
                    n.type === 'EVENTOS' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
         }));
         res.json(formatted);
+    });
+});
+
+// --- SUGERENCIAS ---
+app.post('/api/suggestions', (req, res) => {
+    const { user_id, category, subject, message } = req.body;
+    const sql = 'INSERT INTO suggestions (user_id, category, subject, message) VALUES (?, ?, ?, ?)';
+    db.query(sql, [user_id, category, subject, message], (err, result) => {
+        if(err) return res.status(500).json(err);
+        res.json({ success: true });
     });
 });
 

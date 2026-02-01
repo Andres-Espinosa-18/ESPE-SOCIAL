@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ViewState } from '../types';
 import { Menu, Home, Calendar, MessageSquare, Users, Bell, MessageCircle, X, LogOut, User, Flag } from 'lucide-react';
 
@@ -11,6 +11,8 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, children, onLogout }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   const menuItems = [
     { view: ViewState.HOME, label: 'Página de Inicio', icon: Home },
@@ -25,7 +27,21 @@ const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, children, onLo
   const handleNav = (view: ViewState) => {
     onNavigate(view);
     setIsMenuOpen(false);
+    setIsProfileMenuOpen(false);
   };
+
+  // Close profile menu if clicked outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
@@ -40,8 +56,33 @@ const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, children, onLo
             <span className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">Social Network</span>
           </div>
         </div>
-        <div className="p-2 bg-purple-100 rounded-full text-purple-600 cursor-pointer hover:bg-purple-200 transition-colors">
-           <User size={24} />
+        
+        {/* Profile Circle with Dropdown */}
+        <div className="relative" ref={profileMenuRef}>
+          <button 
+            onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+            className="p-2 bg-purple-100 rounded-full text-purple-600 cursor-pointer hover:bg-purple-200 transition-colors focus:outline-none"
+          >
+             <User size={24} />
+          </button>
+
+          {isProfileMenuOpen && (
+            <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 animate-fade-in z-30">
+              <button 
+                onClick={() => handleNav(ViewState.PROFILE)}
+                className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+              >
+                <User size={16} /> Ver Perfil
+              </button>
+              <div className="border-t border-gray-100 my-1"></div>
+              <button 
+                onClick={onLogout}
+                className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+              >
+                <LogOut size={16} /> Cerrar Sesión
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -63,7 +104,6 @@ const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, children, onLo
               <User size={40} className="text-espe-green" />
             </div>
             <h3 className="font-bold text-gray-800">Estudiante ESPE</h3>
-            <p className="text-xs text-gray-500">L00392929</p>
           </div>
 
           <nav className="flex-1 space-y-3">

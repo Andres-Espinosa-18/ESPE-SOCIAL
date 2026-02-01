@@ -10,7 +10,8 @@ export enum ViewState {
   CLUBS = 'CLUBS',
   NOTIFICATIONS = 'NOTIFICATIONS',
   SUGGESTIONS = 'SUGGESTIONS',
-  NEWS_DETAIL = 'NEWS_DETAIL'
+  NEWS_DETAIL = 'NEWS_DETAIL',
+  PROFILE = 'PROFILE'
 }
 
 export interface User {
@@ -19,6 +20,9 @@ export interface User {
   student_id: string;
   email: string;
   role: 'student' | 'admin';
+  bio?: string;
+  phone?: string;
+  avatar?: string;
 }
 
 export interface NewsItem {
