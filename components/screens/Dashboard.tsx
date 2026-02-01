@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ViewState, NewsItem, User, Announcement, UserEvent } from '../../types';
-import { PlusCircle, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface DashboardProps {
   onNavigate: (view: ViewState) => void;
@@ -14,7 +14,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
   const [calendarEvents, setCalendarEvents] = useState<UserEvent[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Admin Modal State
+  // Admin Modal State (Keep state logic in case we re-enable elsewhere, but button removed)
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminTitle, setAdminTitle] = useState('');
   const [adminContent, setAdminContent] = useState('');
@@ -107,8 +107,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
   const getWeekDays = () => {
     const curr = new Date();
     const days = [];
-    // Start from Monday (1) to Sunday (7). Adjust logic so array is Mon-Sun
-    // getDay() returns 0 for Sunday.
     const currentDay = curr.getDay() === 0 ? 7 : curr.getDay(); 
     
     // Set to Monday
@@ -128,7 +126,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
       const dayName = new Intl.DateTimeFormat('es-ES', { weekday: 'short' }).format(dateObj).toUpperCase().replace('.', '');
       const dayNum = dateObj.getDate();
       
-      // Find events for this day
       const dayEvents = calendarEvents.filter(e => e.event_date === dateStr);
       const hasEvent = dayEvents.length > 0;
       const firstEvent = hasEvent ? dayEvents[0] : null;
@@ -145,7 +142,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
       };
   });
 
-  // Helper for colors based on current tab
   const getAlertColor = () => {
       switch(alertTab) {
           case 'ACADEMICO': return 'bg-espe-green';
@@ -195,14 +191,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate, onSelectNews }) => {
       <div>
          <div className="flex justify-between items-center mb-3">
              <h3 className="font-bold text-gray-800 text-lg">Avisos y Comunicados</h3>
-             {isAdmin && (
-                 <button 
-                    onClick={() => setShowAdminModal(true)} 
-                    className="flex items-center gap-1 text-xs font-bold bg-gray-800 text-white px-3 py-1 rounded-lg hover:bg-black"
-                 >
-                    <PlusCircle size={14}/> Publicar Aviso
-                 </button>
-             )}
+             {/* BOTÓN ELIMINADO SEGÚN SOLICITUD */}
          </div>
 
          <div className={`${getAlertColor()} rounded-3xl p-6 text-white shadow-lg transition-colors duration-300 relative overflow-hidden min-h-[180px]`}>

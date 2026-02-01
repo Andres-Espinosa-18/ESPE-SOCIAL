@@ -42,9 +42,19 @@ CREATE TABLE IF NOT EXISTS forum_posts (
     user_id INT NOT NULL,
     author_name VARCHAR(100),
     content TEXT NOT NULL,
-    image TEXT,
+    image LONGTEXT, -- Changed to LONGTEXT to support Base64 images
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Tabla de Likes en Foros
+CREATE TABLE IF NOT EXISTS forum_likes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    post_id INT NOT NULL,
+    user_id INT NOT NULL,
+    FOREIGN KEY (post_id) REFERENCES forum_posts(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(post_id, user_id)
 );
 
 -- Tabla de Clubes
@@ -66,6 +76,30 @@ CREATE TABLE IF NOT EXISTS club_members (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (club_id) REFERENCES clubs(id),
     UNIQUE(user_id, club_id)
+);
+
+-- Tabla de Grupos de Estudio
+CREATE TABLE IF NOT EXISTS study_groups (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(150) NOT NULL,
+    description TEXT NOT NULL,
+    topic VARCHAR(100),
+    meeting_date VARCHAR(50),
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+-- Tabla de Miembros de Grupos de Estudio
+CREATE TABLE IF NOT EXISTS study_group_members (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    group_id INT NOT NULL,
+    user_id INT NOT NULL,
+    status ENUM('pending', 'accepted') DEFAULT 'accepted', -- Simplificado a accepted por defecto para el creador
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES study_groups(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(group_id, user_id)
 );
 
 -- Tabla de Notificaciones
@@ -98,7 +132,7 @@ CREATE TABLE IF NOT EXISTS user_events (
 -- DATOS SEMILLA (SEED DATA) --
 
 -- Insertar Admin
-INSERT INTO users (name, student_id, email, password, role) VALUES ('Administrador', 'ADMIN01', 'admin@espe.edu.ec', 'admin123', 'admin');
+INSERT IGNORE INTO users (id, name, student_id, email, password, role) VALUES (1, 'Administrador', 'ADMIN01', 'admin@espe.edu.ec', 'admin123', 'admin');
 
 -- Insertar Noticias
 INSERT INTO news (title, image, date, author, summary, content) VALUES
@@ -113,12 +147,11 @@ INSERT INTO announcements (type, title, date, content, created_by) VALUES
 
 -- Insertar Clubes
 INSERT INTO clubs (title, description, image, icon_name, color_class) VALUES
-('Club de Software', 'Desarrollo web y móvil.', 'https://picsum.photos/400/300?random=10', 'Code', 'bg-blue-100 text-blue-600'),
-('Club de Danza', 'Ritmos latinos y modernos.', 'https://picsum.photos/400/300?random=11', 'Music', 'bg-pink-100 text-pink-600'),
-('Club de Robótica', 'Automatización y circuitos.', 'https://picsum.photos/400/300?random=12', 'Cpu', 'bg-purple-100 text-purple-600');
+('Club de Software', 'Desarrollo web y móvil, hackathons y proyectos open source.', 'https://picsum.photos/400/300?random=10', 'Code', 'bg-blue-100 text-blue-600'),
+('Club de Danza', 'Ritmos latinos, modernos y folclore nacional. Presentaciones semestrales.', 'https://picsum.photos/400/300?random=11', 'Music', 'bg-pink-100 text-pink-600'),
+('Club de Robótica', 'Automatización, circuitos y competencia de seguidores de línea.', 'https://picsum.photos/400/300?random=12', 'Cpu', 'bg-purple-100 text-purple-600');
 
 -- Insertar Eventos Globales (Por defecto para todos)
--- Nota: Usamos el ID 1 (Admin) como creador, pero is_global = TRUE
 INSERT INTO user_events (user_id, title, event_date, event_time, location, type_label, color, is_global) VALUES
 (1, 'Inicio Parcial 1', CURDATE() + INTERVAL 2 DAY, '07:00', 'Campus', 'Académico', 'bg-espe-green', TRUE),
 (1, 'Feriado Nacional', CURDATE() + INTERVAL 5 DAY, '00:00', 'Nacional', 'Feriado', 'bg-red-500', TRUE),

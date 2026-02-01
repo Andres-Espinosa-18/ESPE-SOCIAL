@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ViewState, NewsItem, Club, NotificationItem, User } from '../../types';
-import { ArrowLeft, Search, Bell, Calendar, MessageSquare, Info, Flag, Dumbbell, Code, Music, Cpu, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Search, Bell, Calendar, MessageSquare, Info, Flag, Dumbbell, Code, Music, Cpu, CheckCircle, X } from 'lucide-react';
 
 /* --- NOTIFICATIONS --- */
 export const NotificationsScreen: React.FC = () => {
@@ -90,6 +90,7 @@ export const NotificationsScreen: React.FC = () => {
 /* --- CLUBS SCREEN --- */
 export const ClubsScreen: React.FC = () => {
    const [clubs, setClubs] = useState<any[]>([]);
+   const [selectedClub, setSelectedClub] = useState<any | null>(null); // State for modal
    
    const loadClubs = () => {
        const userString = localStorage.getItem('user');
@@ -105,7 +106,8 @@ export const ClubsScreen: React.FC = () => {
        loadClubs();
    }, []);
 
-   const handleJoin = async (clubId: number) => {
+   const handleJoin = async (e: React.MouseEvent, clubId: number) => {
+      e.stopPropagation(); // Prevent modal opening
       const userString = localStorage.getItem('user');
       if (!userString) return;
       const user: User = JSON.parse(userString);
@@ -151,7 +153,7 @@ export const ClubsScreen: React.FC = () => {
             {clubs.map(club => {
                const isJoined = club.is_joined === 1;
                return (
-                  <div key={club.id} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-lg transition-all group flex flex-col h-full">
+                  <div key={club.id} onClick={() => setSelectedClub(club)} className="cursor-pointer bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-lg transition-all group flex flex-col h-full">
                      <div className="h-40 overflow-hidden relative">
                         <img src={club.image} alt={club.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                         <div className="absolute top-4 left-4 p-2 bg-white rounded-xl shadow-md">
@@ -162,12 +164,12 @@ export const ClubsScreen: React.FC = () => {
                      </div>
                      <div className="p-6 flex flex-col flex-1">
                         <h3 className="text-xl font-bold text-gray-900 mb-2">{club.title}</h3>
-                        <p className="text-gray-600 text-sm leading-relaxed mb-6 flex-1">
+                        <p className="text-gray-600 text-sm leading-relaxed mb-6 flex-1 line-clamp-3">
                            {club.description}
                         </p>
                         
                         <button 
-                           onClick={() => handleJoin(club.id)}
+                           onClick={(e) => handleJoin(e, club.id)}
                            disabled={isJoined}
                            className={`w-full font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2
                               ${isJoined 
@@ -189,6 +191,42 @@ export const ClubsScreen: React.FC = () => {
                );
             })}
          </div>
+
+         {/* CLUB DETAIL MODAL */}
+         {selectedClub && (
+             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedClub(null)}></div>
+                 <div className="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl animate-fade-in-up overflow-hidden">
+                     <div className="relative h-48">
+                         <img src={selectedClub.image} className="w-full h-full object-cover" />
+                         <button onClick={() => setSelectedClub(null)} className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70">
+                             <X size={20}/>
+                         </button>
+                     </div>
+                     <div className="p-8">
+                         <div className="flex items-center gap-3 mb-4">
+                             <div className={`p-2 rounded-xl ${selectedClub.color_class}`}>
+                                {getClubIcon(selectedClub.icon_name)}
+                             </div>
+                             <h2 className="text-2xl font-bold text-gray-900">{selectedClub.title}</h2>
+                         </div>
+                         <p className="text-gray-700 leading-relaxed mb-6">
+                             {selectedClub.description}
+                         </p>
+                         <button 
+                            onClick={(e) => {
+                                handleJoin(e, selectedClub.id);
+                                setSelectedClub(null);
+                            }}
+                            disabled={selectedClub.is_joined === 1}
+                            className="w-full bg-espe-green text-white font-bold py-3 rounded-xl hover:bg-espe-darkGreen disabled:opacity-50"
+                         >
+                             {selectedClub.is_joined === 1 ? 'Ya eres miembro' : 'Unirse al Club'}
+                         </button>
+                     </div>
+                 </div>
+             </div>
+         )}
       </div>
    );
 };
